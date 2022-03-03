@@ -1,2 +1,2 @@
-# rock-art-vision
-Computer vision software for Rock Art analysis. 
+# Rock Art Vision
+Computer vision program for Rock Art analysis. 
