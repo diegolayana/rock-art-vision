@@ -1,4 +1,5 @@
 from matplotlib import pyplot as plt
+from matplotlib.image import imsave
 import numpy as np
 from scipy import ndimage
 from scipy import signal
@@ -74,28 +75,18 @@ dim = 200
 points = 50
 kernel = gaussian(10, 6)
 
-img_1 = Imagen(r'C:\Users\diego\Desktop\Programacion\tesis\test\Ll-38_C16-PI-f16.tif')
-img_2 = Imagen(r'C:\Users\diego\Desktop\Programacion\tesis\test\Ll-38_C16-PI-f17.tif')
-img_3 = Imagen(r'C:\Users\diego\Desktop\Programacion\tesis\test\Ll-43_B1_I_F1.tif')
-img_4 = Imagen(r'C:\Users\diego\Desktop\Programacion\tesis\test\Ll-43_B5-I_F6.tif')
-img_5 = Imagen(r'C:\Users\diego\Desktop\Programacion\tesis\test\Ll-43_B5-I_F7.tif')
-img_6 = Imagen(r'C:\Users\diego\Desktop\Programacion\tesis\test\Ll-43_B5-II_F2.tif')
-img_7 = Imagen(r'C:\Users\diego\Desktop\Programacion\tesis\test\Ll-43_B5-II_F7.tif')
+img = Imagen(r'C:\Users\diego\Desktop\Programacion\tesis\test\Ll-38_C16-PI-f17.tif')
 
-images = (img_1, img_2, img_3, img_4, img_5, img_6)
-
-img_2.start(scale, dim)
+img.start(scale, dim)
 Ix, Iy, mag = gradient(kernel)
-img1 = convolve(img_2.img, Ix)
-img2 = convolve(img_2.img, Iy)
+img1 = convolve(img.img, Ix)
+img2 = convolve(img.img, Iy)
 blurgrad = np.hypot(img1, img2)
 space = Segmentation(blurgrad, dim, points)
-plot(blurgrad)
-
-viz(space, 100)
+space.start()
 
 
-
+# viz(space, 100)
 
 
 
