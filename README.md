@@ -4,7 +4,7 @@ Computer vision 👁️ program for Rock Art analysis.
 
 ## Introduction
 
-_This program is part of my work to obtain Electronic Engieneering degree._🤕
+_This program is part of my work to obtain Electronic Engieneering degree._ 🤕
 
 I'm this work, a methodology for the orgaization and analisys of rock art data from Arica y Parinacota region is being proposed. 
 Workig with drawings from this artifeacts a curvature analisys is being development for a automatic classification.
@@ -42,6 +42,19 @@ Simbology: ✅ = Ready, ☑️ = In progress, ⌚ = In waiting
 _manim animation for presenting the final work_
 ## Some code.
 _for you to belive in my programming habilities_
+### Preprocessing
 
+Here im gonna show some functions from `imagen.py` file
 
+We are starting with this drawing, an interpretation from a rock art.
 ![](images/images_readme/image_raw.png)
+As you can see its a really easy image to work with. If you were asking why, its because its a *binary image*, it means we are only working with one channel (array or matrix) instead of three (the case of colored image).
+#### Thresholding
+For us to know which should be the range of values for this kind of image, we should extract a *histogram*, something like the spectrum of this image.
+```python
+img = Imagen(r'C:\\...\images_raw\img.tif')
+plt.hist(img.img.ravel(),256,[0,256])
+plt.show
+```
+![](images/images_readme/hist.png)
+
