@@ -7,7 +7,7 @@ Computer vision 👁️ program for Rock Art analysis.
 _This program is part of my work to obtain Electronic Engieneering degree._ 🤕
 
 I'm this work, a methodology for the orgaization and analisys of rock art data from Arica y Parinacota region is being proposed. 
-Workig with drawings from this artifeacts a curvature analisys is being development for a automatic classification.
+Workig with drawings from these artifeacts a curvature analisys is being development for a automatic classification.
 Also, manim animations is beign studied for visualization porpuses during the final presentation.
 
 ## Progress
