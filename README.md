@@ -4,18 +4,18 @@ Computer vision 👁️ program for Rock Art analysis.
 
 ## Introduction
 
-_This program is part of my work to obtain Electronic Engieneering degree._ 🤕
+_This program is part of my work to obtain Electronic Engineering degree._ 🤕
 
-I'm this work, a methodology for the orgaization and analisys of rock art data from Arica y Parinacota region is being proposed. 
-Workig with drawings from these artifeacts a curvature analisys is being development for a automatic classification.
-Also, manim animations is beign studied for visualization porpuses during the final presentation.
+Here I propose a methodology for the organisation and analisys of rock art data from Arica y Parinacota region is being proposed. 
+Workig with drawings from these artifeacts a curvature analisys is being developed for a automatic classification.
+Also, manim animations are beign studied for visualization purpose during the final presentation.
 
 ## Progress
-The following list is the composition of the code and its progress: 
+The following list is the code composition and its progress: 
 
 _this list is going to be updated everyday (i wish)_
 
-Simbology: ✅ = Ready, ☑️ = In progress, ⌚ = In waiting
+Symbology: ✅ = Ready, ☑️ = In progress, ⏰ = In waiting
 
 * Automatic Classification: ☑️
   * Preprocessing: ✅
@@ -30,18 +30,18 @@ Simbology: ✅ = Ready, ☑️ = In progress, ⌚ = In waiting
     * Contour lines.✅
       * Greedy algorithm. ✅
       * Active contour model.☑️
-    * Initialization. ⌚
+    * Initialization. ⏰
 
   * Curvature Scale Space mapping (CSS-map): ☑️
     * Contour initializacion. ☑️
-    * -the rest of the code- ⌚
+    * -the rest of the code- ⏰
 
-  * Support Vector Machine algorithm (SVM): ⌚
+  * Support Vector Machine algorithm (SVM): ⏰
   
-* Visualization: ⌚
+* Visualization: ⏰
 _manim animation for presenting the final work_
 ## Some code.
-_for you to belive in my programming habilities_
+_for you to believe in my programming abilities_
 ### Preprocessing
 
 Here im gonna show some functions from `imagen.py` file
