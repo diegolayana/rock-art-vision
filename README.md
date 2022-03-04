@@ -89,8 +89,7 @@ First we define a vector of point for us to start the contour algorithm
 
 In this section the a greedy approach is used for the control points to fit the contour of the images. For us to do that, first we defined a energy image, gived by the Blurred Gradient Magnitude Squared.<br />
 
-<img src="https://latex.codecogs.com/svg.image?||\Delta&space;n_{\sigma}*I||^{2}" title="||\Delta n_{\sigma}*I||^{2}" />__
-
+<img src="https://latex.codecogs.com/svg.image?||\Delta&space;n_{\sigma}*I||^{2}" title="||\Delta n_{\sigma}*I||^{2}" /><br />
 ![](images/images_readme/blurgrad.png)<br />
 
 The algorithm is supossed to search for the maximum of the evergy funtion. In a mathematics language:<br />
