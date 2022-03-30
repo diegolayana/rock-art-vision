@@ -1,170 +1,133 @@
+#this is the second try for the segmentation, hope this will work.
+from scipy import ndimage, optimize
 import numpy as np
-import math
+from matplotlib import pyplot as plt
+from skimage import morphology
+from imagen import *
+from skimage import measure
+from functools import partial
 
-class Segmentation:
-    def __init__(self, energy, dim, points):
-        self.dim = dim
-        self.points = points
-        self.img = 0
-        self.energy = energy
-        self.circle = 0
-        self.paststates = set()
-        self.win_len = 5
 
-    def start(self):
-        d = self.dim
-        p = d/2 - int(d*0.9)
-        h = d/2
-        k = d/2
-        circle = []
-        points = self.points
-        space = np.zeros((d,d), dtype = int)
+def snake_energy(flattened_pts, edge_dist, alpha, beta):
 
-        theta = np.linspace(0, 2*np.pi, points+1)
-        x = np.sin(theta)*p + k
-        y = -np.cos(theta)*p  + h
+    pts = np.reshape(flattened_pts, (int(len(flattened_pts)/2), 2))
+    #external energy
+    dist_vals = ndimage.map_coordinates(edge_dist, [pts[:,0],pts[:,1]])
+    edge_energy = np.sum(dist_vals)
+    external_energy = edge_energy 
 
-        x = x.astype(int)
-        y = y.astype(int)
 
-        for i in range(len(x)):
-            circle.append((x[i],y[i]))
-            self.paststates.add((x[i],y[i]))
+    # spacing energy (favors equi-distant points)
+    prev_pts = np.roll(pts, 1, axis=0)
+    next_pts = np.roll(pts, -1, axis=0)
+    displacements = pts - prev_pts
+    point_distances = np.sqrt(displacements[:,0]**2 + displacements[:,1]**2)
+    mean_dist = np.mean(point_distances)
+    spacing_energy = np.sum((point_distances - mean_dist)**2)
 
-        circle = circle[:-1]
-        self.circle = circle
+    # curvature energy (favors smooth curves)
+    curvature_1d = prev_pts - 2*pts + next_pts
+    curvature = (curvature_1d[:,0]**2 + curvature_1d[:,1]**2)
+    curvature_energy = np.sum(curvature)
+    
+    return external_energy + alpha*spacing_energy + beta*curvature_energy
 
-        for i in range(len(x)):
-            space[x[i]][y[i]] = 1
+def fit_snake(pts, edge_dist, alpha = 0.5, beta = 0.25, nits = 100, point_plot = None):
+    if point_plot:
+        def callback_function(new_pts):
+            callback_function.nits += 1
+            y = new_pts[0::2]
+            x = new_pts[1::2]
+            point_plot.set_data(x,y)
+            plt.title('%i iterations' % callback_function.nits)
+            point_plot.figure.canvas.draw()
+            plt.pause(0.02)
+        callback_function.nits = 0
+    else:
+        callback_function = None
+    
+    # optimize
+    cost_function = partial(snake_energy, alpha=alpha, beta=beta, edge_dist=edge_dist)
+    options = {'disp':False}
+    options['maxiter'] = nits  # FIXME: check convergence
+    method = 'BFGS'  # 'BFGS', 'CG', or 'Powell'. 'Nelder-Mead' has very slow convergence
+    res = optimize.minimize(cost_function, pts.ravel(), method=method, options=options, callback=callback_function)
+    optimal_pts = np.reshape(res.x, (int(len(res.x)/2), 2))
 
-        self.img = space
+    return optimal_pts
 
-        return self.img
+def generate_image_energy(image, std, w_line, w_edge, w_term, w_edge_dist):
+    Cx, Cy, Cxx, Cyy, Cxy = get_gradients(image)
+    e_line = image
+    e_edge = -np.hypot(ndimage.gaussian_filter(Cx, std), ndimage.gaussian_filter(Cy, std))**2
+    e_termination = (Cyy*Cx**2 - 2*Cxy*Cx*Cy + Cxx*Cy**2)/((1 + Cx**2 + Cy**2)**(1.5))
+    mag = np.hypot(Cx,Cy)
+    mag[mag > 0] = 1
+    skeleton = morphology.skeletonize(mag)
+    edge_dist = ndimage.distance_transform_edt(~skeleton)
+    e_image = w_line * e_line + w_edge * e_edge + w_term * e_termination + w_edge_dist * edge_dist
+    e_image = e_image/np.linalg.norm(e_image)
+    
+    return e_image   
 
-    def window(self, point):
-        index = np.array(range(self.win_len))-int(self.win_len/2)
-        window = []
-        for x in index:
-            for y in index:
-                window.append(self.energy[x+point[0]][y+point[1]])
+def get_gradients(image):
+    Kx = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    Ky = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])  
+    Cx = ndimage.convolve(image, Kx)
+    Cy = ndimage.convolve(image, Ky)  
+    Cxx = ndimage.convolve(Cx, Kx)
+    Cyy = ndimage.convolve(Cy, Ky)
+    Cxy = ndimage.convolve(Cx, Ky)
+    
+    return Cx, Cy, Cxx, Cyy, Cxy
 
-        win = np.asarray(window)
-        win = np.reshape(win, (self.win_len,self.win_len))
-        return win
-
-    def sumenergy(self):
-        sum = 0
-        for point in self.circle:
-            sum = sum + self.energy[point[0]][point[1]]
-        return sum
-
-    def newpoint_2(self):
-
-        circle = []
-        for point in self.circle:
-            win = self.window(point).copy()
-            newpoint = np.unravel_index(win.argmax(), win.shape)
-            x = point[0] + newpoint[0] - 1
-            y = point[1] + newpoint[1] - 1
-            newpoint = (x, y)
-            while newpoint in circle == True:
-                win[1][1] = 0
-                newpoint = np.unravel_index(win.argmax(), win.shape)
-                x = point[0] + newpoint[0] - 1
-                y = point[1] + newpoint[1] - 1
-                newpoint = (x, y)
-            circle.append(newpoint)
-        self.circle = circle
-
-        return point
-
-    def initcircle(self):
-        circle = []
-        center = (self.dim/2), (self.dim/2)
-        paststates = set()
-        for point in self.circle:
-            win = self.window(point)
-            energy_space = {}
-            energy = []
-            space_point = list(zip(*np.where(win < np.max(self.energy))))
-            for i in space_point:
-                point_aux = (i[0] + point[0] - int(self.win_len/2), i[1]+point[1] - int(self.win_len/2) )
-                energy_aux = math.hypot(point_aux[0] - center[0], point_aux[1] - center[1])
-                energy_space[energy_aux] = point_aux
-                energy.append(energy_aux)
-            energy.sort()
-            #Asignacion de la menor energía al punto sin pasar por un estado anterior
-            if self.energy[energy_space[energy[0]][0]][energy_space[energy[0]][1]] > 2:
-                newpoint = point
-                circle.append(newpoint)
-                paststates.add(newpoint)
-            else:
-                i = 0
-                if energy_space[energy[0]] == point:
-                    newpoint = point
-                else:
-                    while energy_space[energy[i]] in paststates:
-                        i = i+1
-                    newpoint = energy_space[energy[i]]
-                circle.append(newpoint)
-                paststates.add(newpoint)
-        self.circle = circle
-
-        return None
-
-    def newpoint(self):
-        circle = []
-        paststates = set()
-        for point in self.circle:
-            win = self.window(point)
-            space_point = list(zip(*np.where(win < np.max(self.energy))))
-            energy_space = {}
-            energy = []
-            for i in space_point:
-                point_aux = (i[0] + point[0] - int(self.win_len/2), i[1]+point[1] - int(self.win_len/2) )
-                energy_aux = self.window(point_aux).sum()
-                energy_space[energy_aux] = point_aux
-                energy.append(energy_aux)
-            energy.sort(reverse=True)
-            i = 0
-            if energy_space[energy[0]] == point:
-                newpoint = point
-            else:
-                while energy_space[energy[i]] in paststates:
-                    i = i+1
-                newpoint = energy_space[energy[i]]
-            circle.append(newpoint)
-            paststates.add(newpoint)
-        self.circle = circle
-
-        return None
-
-    def contour_1(self, cicles):
-        space = np.zeros((self.dim,self.dim), dtype = int)
-
-        for i in range(cicles):
-            self.initcircle()
-        for i in range(len(self.circle)):
-            space[self.circle[i][0]][self.circle[i][1]] = 1
-
-        self.img = space
-        return self.img        
-
-    def contour_2(self, cicles):
-        space = np.zeros((self.dim,self.dim), dtype = int)
-        
-        for i in range(cicles):
-            self.newpoint()
-        for i in range(len(self.circle)):
-            space[self.circle[i][0]][self.circle[i][1]] = 1
-
-        self.img = space
-        return self.img
-
+def init_points(dim, n_points):
+    p = dim/2 - int(dim*0.85)
+    h = dim/2
+    k = dim/2
+    theta = np.linspace(0, 2*np.pi, n_points + 1)
+    x = np.sin(theta)*p + k
+    y = -np.cos(theta)*p + h
+    x = x[:-1]
+    y = y[:-1]
+    pts = np.array([x,y]).T
+    return pts
 
 def main():
-    pass
+    #Parameters
+    dim = 200
+    n_points = 80
+
+    #Image example
+    xx, yy = np.mgrid[:dim,:dim]
+    circle = (xx-100) **2 + (yy - 100) ** 2
+    image = np.logical_and(circle < 2500, circle >= 0).astype(int)
+
+    #Imagen example
+    img_camelido = Imagen(r'C:\Users\diego\Desktop\Programacion\rock-art-vision\images\images_raw_all\Ll-43_B5-I_F6.tif')
+    img_camelido.start(0.1,200)
+
+    #Plots points
+    space = np.zeros((dim,dim), dtype = int)
+    for point in init_points(dim, n_points):
+        space[int(point[0])][int(point[1])] = 1
+
+    pts = init_points(dim, n_points)
+
+    edge_dist = generate_image_energy(img_camelido.img,1, 40,30, 1, 1)
+
+    fig = plt.figure()
+    plt.imshow(img_camelido.img, cmap='gray')
+    plt.plot(pts[0], pts[1], 'bo')
+    line_obj, = plt.plot(pts[0], pts[1], 'ro')
+    plt.axis('off')
+        
+    plt.ion()
+    plt.pause(0.01)
+    snake_pts = fit_snake(pts, edge_dist, nits=2000, alpha=0.0001, beta=0.00001, point_plot=line_obj)
+    plt.ioff()
+    plt.pause(0.01)
+    plt.show()
 
 if __name__ == '__main__':
     main()
-    
