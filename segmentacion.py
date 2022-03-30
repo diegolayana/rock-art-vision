@@ -6,6 +6,7 @@ from skimage import morphology
 from imagen import *
 from skimage import measure
 from functools import partial
+from external_energy import generate_image_energy, get_gradients
 
 
 def snake_energy(flattened_pts, edge_dist, alpha, beta):
@@ -55,31 +56,6 @@ def fit_snake(pts, edge_dist, alpha = 0.5, beta = 0.25, nits = 100, point_plot =
     optimal_pts = np.reshape(res.x, (int(len(res.x)/2), 2))
 
     return optimal_pts
-
-def generate_image_energy(image, std, w_line, w_edge, w_term, w_edge_dist):
-    Cx, Cy, Cxx, Cyy, Cxy = get_gradients(image)
-    e_line = image
-    e_edge = -np.hypot(ndimage.gaussian_filter(Cx, std), ndimage.gaussian_filter(Cy, std))**2
-    e_termination = (Cyy*Cx**2 - 2*Cxy*Cx*Cy + Cxx*Cy**2)/((1 + Cx**2 + Cy**2)**(1.5))
-    mag = np.hypot(Cx,Cy)
-    mag[mag > 0] = 1
-    skeleton = morphology.skeletonize(mag)
-    edge_dist = ndimage.distance_transform_edt(~skeleton)
-    e_image = w_line * e_line + w_edge * e_edge + w_term * e_termination + w_edge_dist * edge_dist
-    e_image = e_image/np.linalg.norm(e_image)
-    
-    return e_image   
-
-def get_gradients(image):
-    Kx = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-    Ky = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])  
-    Cx = ndimage.convolve(image, Kx)
-    Cy = ndimage.convolve(image, Ky)  
-    Cxx = ndimage.convolve(Cx, Kx)
-    Cyy = ndimage.convolve(Cy, Ky)
-    Cxy = ndimage.convolve(Cx, Ky)
-    
-    return Cx, Cy, Cxx, Cyy, Cxy
 
 def init_points(dim, n_points):
     p = dim/2 - int(dim*0.85)
