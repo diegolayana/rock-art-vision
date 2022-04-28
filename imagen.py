@@ -1,6 +1,8 @@
 import cv2 as cv
 import numpy as np
 import math
+import matplotlib.pyplot as plt
+from matplotlib.widgets import RangeSlider
 
 class Imagen:
 
@@ -181,8 +183,54 @@ class Imagen:
 
 
 def main():
-    pass
+    dim = 200
+    scale = 0.3
+    img_camelido = Imagen(r'C:\Users\diego\Desktop\Programacion\rock-art-vision\images\images_raw_all\Ll-43_B5-I_F6.tif')
+    img_camelido.small(scale)
+    img_camelido.thresh()
+    p1,p2, secondmoment = img_camelido.secondmoment()
+    plt.imshow(secondmoment, 'gray')
+    plt.show()
 
+def thresh_img():
+
+    dim = 200
+    scale = 0.3
+    # img_camelido = Imagen(r'C:\Users\diego\Desktop\Programacion\rock-art-vision\images\images_raw_all\Ll-43_B5-I_F6.tif')
+    img_camelido = Imagen(r'C:\Users\diego\Desktop\Programacion\rock-art-vision\images\images_raw_all\Antropomorfos\Az-Anm-1_B8_P4_F2 (5).jpg')
+    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    plt.subplots_adjust(bottom=0.25)
+
+    im = axs[0].imshow(img_camelido.img, 'gray')
+    axs[1].hist(img_camelido.img.flatten(), bins='auto')
+    axs[1].set_title('Histogram of pixel intensities')
+
+    # Create the RangeSlider
+    slider_ax = plt.axes([0.20, 0.1, 0.60, 0.03])
+    slider = RangeSlider(slider_ax, "Threshold", img_camelido.img.min(), img_camelido.img.max())
+
+    # Create the Vertical lines on the histogram
+    lower_limit_line = axs[1].axvline(slider.val[0], color='k')
+    upper_limit_line = axs[1].axvline(slider.val[1], color='k')
+
+
+    def update(val):
+        # The val passed to a callback by the RangeSlider will
+        # be a tuple of (min, max)
+
+        # Update the image's colormap
+        im.norm.vmin = val[0]
+        im.norm.vmax = val[1]
+
+        # Update the position of the vertical lines
+        lower_limit_line.set_xdata([val[0], val[0]])
+        upper_limit_line.set_xdata([val[1], val[1]])
+
+        # Redraw the figure to ensure it updates
+        fig.canvas.draw_idle()
+
+
+    slider.on_changed(update)
+    plt.show()
 if __name__ == '__main__':
     main()
-    
