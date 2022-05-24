@@ -8,88 +8,69 @@ class Imagen:
 
     def __init__(self, path):
         self.path = path
-        self.img = cv.imread(self.path, 0)
-        self.center = int(self.img.shape[0]/2), int(self.img.shape[1]/2)
+        self.load()
         self.scale = 1
-        self.threshold = 0
         self.angle = 0
+        # self.center = self.get_center()
+
+    def load(self):
+        self.img = cv.imread(self.path, 0)
+
+    def get_center(self):
+        return int(self.img.shape[0]/2), int(self.img.shape[1]/2)
+
+    def get_masscenter(self):
+        x_c = 0
+        y_c = 0
+        area = self.img.sum()
+        it = np.nditer(self.img, flags=['multi_index'])
+
+        for i in it:
+            y_c = i * it.multi_index[1] + y_c
+            x_c = i * it.multi_index[0] + x_c
+
+        self.center = int(x_c/area), int(y_c/area)
+        return (int(y_c/area), int(x_c/area))
 
     def small(self, scale):
         self.img = cv.resize(self.img, (0,0), fx=scale, fy=scale)
-        self.center = int(self.img.shape[0]/2), int(self.img.shape[1]/2)
-        self.scale = scale
-        return self.img
 
     def thresh(self):
         self.img[self.img < 159] = 0
         self.img[self.img > 161] = 0
         self.img[self.img != 0] = 1
-        self.threshold = 255
-        return self.img
 
     def firstmoment(self):
-        x_c = 0
-        y_c = 0
-        if self.threshold == 0:
-            self.thresh()
-            area = self.img.sum()
-            it = np.nditer(self.img, flags=['multi_index'])
-
-            for i in it:
-                y_c = i * it.multi_index[1] + y_c
-                x_c = i * it.multi_index[0] + x_c
-
-            center = int(x_c/area), int(y_c/area)
-
-            self.center = center
-
-            image = self.img.copy()
-            firstmoment = cv.circle(image, (int(y_c/area), int(x_c/area)) , radius = int(self.img.shape[0]*0.02), color=0, thickness=-1)
-
-            return firstmoment
-        else:
-            area = self.img.sum()
-            it = np.nditer(self.img, flags=['multi_index'])
-
-            for i in it:
-                y_c = i * it.multi_index[1] + y_c
-                x_c = i * it.multi_index[0] + x_c
-
-            center = int(x_c/area), int(y_c/area)
-
-            self.center = center
-            image = self.img.copy()
-            firstmoment = cv.circle(image, (int(y_c/area), int(x_c/area)) , radius = int(self.img.shape[0]*0.02), color=0, thickness=-1)
-
-            return firstmoment
+        self.load()
+        self.thresh()
+        x,y = self.get_masscenter()
+        image = self.img.copy()
+        firstmoment = cv.circle(image, (x, y) , radius = int(self.img.shape[0]*0.02), color=0, thickness=-1)
+        self.img = firstmoment
 
     def centered(self):
 
-        if(self.scale <= 0.4):
-            center = int(self.img.shape[0]/2), int(self.img.shape[1]/2)
+        center = self.get_center
+        self.firstmoment()
+        dy = int((center[1] - self.center[1]))
+        dx = int((center[0] - self.center[0]))
+        while abs(dx) > 1 or abs(dy) > 1:
+            zerox = np.zeros((abs(dx), self.img.shape[1]))
+            if dx > 0:
+                self.img = np.append(zerox, self.img, 0)
+            else:
+                self.img = np.append(self.img, zerox, 0)
+            zeroy = np.zeros((self.img.shape[0], abs(dy)))
+            if dy > 0:
+                self.img = np.append(zeroy, self.img, 1)
+            else:
+                self.img = np.append(self.img, zeroy, 1)
+
             self.firstmoment()
-            dy = int((center[1] - self.center[1]))
+            center = int(self.img.shape[0]/2), int(self.img.shape[1]/2)
             dx = int((center[0] - self.center[0]))
-            while abs(dx) > 1 or abs(dy) > 1:
-                zerox = np.zeros((abs(dx), self.img.shape[1]))
-                if dx > 0:
-                    self.img = np.append(zerox, self.img, 0)
-                else:
-                    self.img = np.append(self.img, zerox, 0)
-                zeroy = np.zeros((self.img.shape[0], abs(dy)))
-                if dy > 0:
-                    self.img = np.append(zeroy, self.img, 1)
-                else:
-                    self.img = np.append(self.img, zeroy, 1)
-
-                self.firstmoment()
-                center = int(self.img.shape[0]/2), int(self.img.shape[1]/2)
-                dx = int((center[0] - self.center[0]))
-                dy = int((center[1] - self.center[1]))
-            return self.img
-
-        else:
-            raise ValueError('Ingrese una escala menor al 40%')
+            dy = int((center[1] - self.center[1]))
+        return self.img
 
     def square(self, dim):
         if dim > self.img.shape[0] and dim > self.img.shape[1]:
@@ -120,9 +101,9 @@ class Imagen:
             raise ValueError('No se puede expandir si la dimension es mas pequeña que la imagen.')
 
     def secondmoment(self):
-
-        x_c = self.center[0]
-        y_c = self.center[1]
+        self.load()
+        self.thresh()
+        x_c , y_c = self.get_masscenter()
         a = 0
         b = 0
         c = 0
@@ -162,35 +143,12 @@ class Imagen:
         secondmoment = cv.line(img, p_1, p_2, 1, thickness=2)
 
         self.angle = theta
-        return p_11, p_22, secondmoment
+        self.img = secondmoment
+        self.flip()
 
     def flip(self):
-        if self.angle == 0:
-            raise ValueError('Defina la orientación con el segundo momento')
         if self.angle > 0:
             self.img = cv.flip(self.img, 1)
-            return self.img
-        else:
-            return self.img
-
-    def start(self, scale, dim):
-        self.small(scale)
-        self.centered()
-        self.square(dim)
-        self.secondmoment()
-        self.flip()
-        self.img = self.img.astype('int8')
-
-
-def main():
-    dim = 200
-    scale = 0.3
-    img_camelido = Imagen(r'C:\Users\diego\Desktop\Programacion\rock-art-vision\images\images_raw_all\Ll-43_B5-I_F6.tif')
-    img_camelido.small(scale)
-    img_camelido.thresh()
-    p1,p2, secondmoment = img_camelido.secondmoment()
-    plt.imshow(secondmoment, 'gray')
-    plt.show()
 
 def thresh_img():
 
@@ -232,5 +190,13 @@ def thresh_img():
 
     slider.on_changed(update)
     plt.show()
+
+
+def main():
+    img = Imagen(r'C:\Users\diego\Desktop\Programacion\rock-art-vision\images\images_raw_all\Ll-43_B5-I_F6.tif')
+    plt.imshow(img.img, 'gray')
+    plt.show()
+
+
 if __name__ == '__main__':
     main()
