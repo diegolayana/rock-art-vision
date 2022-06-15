@@ -1,4 +1,3 @@
-from ctypes import util
 import unittest
 import utils
 

@@ -132,8 +132,13 @@ dmypy.json
 #Folders
 
 images/images_raw_all/
+images/images_test/
+images/css-maping/
 media/
 
 #Files
 
 animation.py
+external_energy.py
+boundary_pts.py
+cssmap.py
