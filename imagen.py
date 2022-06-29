@@ -180,11 +180,7 @@ class Imagen:
         self.css_map = css_map
 
 def main():
-
-    img = Imagen(r'C:\Users\diego\Desktop\Programacion\rock-art-vision\images\images_raw_all\Ll-43_B5-I_F6.tif', 0.4)
-    img.firstmoment()
-    plt.imshow(img.img,'gray')
-    plt.show()
+    pass 
 
 if __name__ == '__main__':
     main()
