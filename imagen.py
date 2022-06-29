@@ -1,3 +1,4 @@
+from tkinter import Image
 import cv2 as cv
 import numpy as np
 import math
@@ -124,7 +125,7 @@ class Imagen:
 
         self.angle = theta
         self.img = secondmoment
-        self.flip()
+        # self.flip()
 
     def flip(self):
         if self.angle is None:
@@ -179,10 +180,7 @@ class Imagen:
         self.css_map = css_map
 
 def main():
-    css = np.load(r'C:\Users\diego\Desktop\Programacion\rock-art-vision\images\css-maping\C14.tif.npy')
-    plt.imshow(css,'gray')
-    plt.show()
-    pass
+    pass 
 
 if __name__ == '__main__':
     main()
