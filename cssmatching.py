@@ -1,3 +1,5 @@
+from cmath import cos
+from cv2 import connectedComponentsWithStats, pencilSketch
 import numpy as np
 import os
 from os import listdir
@@ -6,19 +8,18 @@ from matplotlib import pyplot as plt
 import cv2 as cv
 import sys
 
-from cssmap import maxima_pts
+from pyparsing import MatchFirst
 
 n_pts = 400
 increment = 20
 class CSS_matching():
-    
-    def __init__(self, model, dir_path):
-        self.path = dir_path
+
+    def __init__(self, model, db_path):
+        self.path = db_path
         self.model = model
         self.load_db()
-        self.model_list = maxima_pts(self.model, n_pts)
+        self.model_list = self.maxima_pts(self.model, n_pts)
         self.cost = 0
-
 
     def load_db(self):
         css_dict = {}
@@ -68,51 +69,161 @@ class CSS_matching():
         return pts
 
     def select_img(self, filename):
+        self.filename = filename
         self.cost = 0
         self.img = np.load(join(self.path,filename +'.npy'))
-        self.model_list = maxima_pts(self.model, n_pts)
-        self.image_list = maxima_pts(self.img, n_pts)
-     
-    def append_ceros(self):
-        dist = len(self.model_list) - len(self.image_list)
-        if dist > 0:
-            for i in range(abs(dist)):
-                self.image_list.append((0,0))
-                self.cost = self.cost + increment
+        self.model_list = self.maxima_pts(self.model, n_pts)
+        self.model_list = set(self.model_list)
+        self.image_list = self.maxima_pts(self.img, n_pts)
+        self.image_list = set(self.image_list)
 
-        if dist < 0:
-            for i in range(abs(dist)):
-                self.model_list.append((0,0))
-                self.cost = self.cost + increment
-    
     def get_cost(self, filename):
-        self.select_img(filename)
-        self.append_ceros()
-        x_1, y_1 = zip(*self.model_list)
-        x_2, y_2 = zip(*self.image_list)
-        y_1 = np.array(list(y_1))
-        y_2 = np.array(list(y_2))
-        self.cost = self.cost + np.sum(abs(y_1-y_2))
+        cost = list()
 
+        self.select_img(filename)
+        self.cost = 0
+        #Case 1
+        model_max = self.get_max_point(self.model_list)
+        image_max = self.get_max_point(self.image_list)
+        self.calculate_cost(model_max, image_max)
+        cost.append(self.cost)
+        self.cost = 0
+
+        #Case 2
+        model_max = self.get_second_max_point(self.model_list)
+        image_max = self.get_second_max_point(self.image_list)
+        self.calculate_cost(model_max, image_max)
+        cost.append(self.cost)
+
+
+        self.cost = min(cost)
+        
+
+    def calculate_cost(self, model_max, image_max):
+
+        #Componsate the 
+        self.compensate(image_max, model_max)
+
+        #Create de model set
+        self.model_set = set()
+        self.image_set = set()
+        self.model_set.add(model_max)
+        self.image_set.add(image_max)
+        self.current_maxima = model_max  
+        for i in range(max(len(self.model_list),len(self.image_list))):
+            if not (self.get_empty_model() or self.get_empty_image()):
+                self.get_model_nearest()
+                self.compute_cost()
+        
+        if len(self.image_list - self.image_set) != 0:
+            self.get_residual_image_cost()
+        if len(self.model_list - self.model_set) != 0:
+            self.get_residual_model_cost()
+
+    def get_empty_model(self):
+        cond = self.model_list - self.model_set
+        return len(cond) == 0
+
+    def get_empty_image(self):
+        cond = self.image_list - self.image_set
+        return len(cond) == 0
+
+    def get_residual_image_cost(self):
+        my_list =  list(self.image_list - self.image_set)
+        x, y = zip(*my_list)
+        y = np.array(y)
+        cost = np.sum(y)
+        self.cost = self.cost + cost
+        
+    def get_residual_model_cost(self):
+        my_list =  list(self.model_list - self.model_set)
+        x, y = zip(*my_list)
+        y = np.array(y)
+        cost = np.sum(y)
+        self.cost = self.cost + cost
+
+    def compute_cost(self):
+        my_list = list(self.image_list - self.image_set)
+        x_model = self.current_maxima[0]
+        x,y = zip(*my_list)
+        x_to_y = dict()
+        for i in range(len(x)):
+            x_to_y[x[i]] = y[i]
+
+        x = np.array(x)
+        dist = abs(x_model - x)
+        perc = dist*100/np.max(x)
+        x_nearest = x_model - np.sort(dist)[0]
+        perc_nearest = np.sort(perc)[0]
+        if perc_nearest < 20:
+            if(x_nearest in x):
+                y_nearest = x_to_y[x_nearest]
+                self.image_set.add((x_nearest,y_nearest))
+            else:
+                x_nearest = x_model + np.sort(dist)[0]
+                y_nearest = x_to_y[x_nearest]
+                self.image_set.add((x_nearest,y_nearest))
+            cost = abs(y_nearest - self.current_maxima[1])
+            self.cost = self.cost + cost
+        else:
+            self.cost = self.cost + self.current_maxima[1]
+
+    def get_max_point(self, set_point):
+        my_list = list(set_point)
+        x_list , y_list = zip(*my_list)
+        y_to_x = dict()
+        for i in range(len(y_list)):
+            y_to_x[y_list[i]] = x_list[i]
+        y_list = np.array(y_list)
+        y_list = np.sort(y_list)
+        y = y_list[-1]
+        x = y_to_x[y]
+        return (x,y)
+
+    def get_second_max_point(self, set_point):
+        my_list = list(set_point)
+        x_list , y_list = zip(*my_list)
+        y_to_x = dict()
+        for i in range(len(y_list)):
+            y_to_x[y_list[i]] = x_list[i]
+        y_list = np.array(y_list)
+        y_list = np.sort(y_list)
+        y = y_list[-2]
+        x = y_to_x[y]
+        return (x,y)
+
+    def compensate(self, image_max, model_max):
+        alpha = image_max[0] - model_max[0]
+        self.model = np.roll(self.model, alpha)
+        self.model_list = set(self.maxima_pts(self.model, n_pts))
+
+    def get_model_nearest(self):
+        my_list = list(self.model_list - self.model_set)
+        x_model = self.current_maxima[0]
+        x, y = zip(*my_list)
+        x_to_y = dict()
+        for i in range(len(x)):
+            x_to_y[x[i]] = y[i]
+        x = np.array(x)
+        dist = abs(x_model - x)
+        x_nearest = x_model - np.sort(dist)[0]
+        if(x_nearest in x):
+            y_nearest = x_to_y[x_nearest]
+        else:
+            x_nearest = x_model + np.sort(dist)[0]
+            y_nearest = x_to_y[x_nearest]
+        point = (x_nearest,y_nearest)
+        mode_set_aux = list(self.model_set)
+        mode_set_aux.append(point)
+        self.model_set = set(mode_set_aux)
+        self.current_maxima = point
+        return (x_nearest,y_nearest)
 
 def images_list(path):
     list = [f for f in listdir(path) if isfile(join(path,f))]
     return list
 
-def process(filename: str=None) -> None:
-    dirname = os.path.dirname(__file__)
-    images_path = join(dirname,r'images\images_test')
-    path = join(filename, images_path, filename)
-    image = cv.imread(path)
-    print(path)
-    plt.figure()
-    plt.imshow(image)
-
-def main():
-    if len(sys.argv) >=2:
-        model_name = sys.argv[1]
-    else:
-        model_name = 'H05.tif'
+def plot_matching(model_name):
 
     #Initialization parametres
 
@@ -137,7 +248,7 @@ def main():
     cost_list = np.array(cost_list)
     cost_list.sort()
 
-    f, axarr = plt.subplots(4,4) 
+    f, axarr = plt.subplots(4,4)
 
     axarr[0][0].imshow(cv.imread(join(images_path, cost_dict[cost_list[0]])))
     axarr[0][1].imshow(cv.imread(join(images_path, cost_dict[cost_list[1]])))
@@ -160,5 +271,12 @@ def main():
     axarr[3][3].imshow(cv.imread(join(images_path, cost_dict[cost_list[15]])))
     plt.show()
 
+def main():
+    if len(sys.argv) >=2:
+        model_name = sys.argv[1]
+    else:
+        model_name = 'A06.tif'
+
+    plot_matching(model_name)
 if __name__ == '__main__':
     main()
