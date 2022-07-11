@@ -1,5 +1,3 @@
-from cmath import cos
-from cv2 import connectedComponentsWithStats, pencilSketch
 import numpy as np
 import os
 from os import listdir
@@ -7,8 +5,6 @@ from os.path import isfile, join
 from matplotlib import pyplot as plt
 import cv2 as cv
 import sys
-
-from pyparsing import MatchFirst
 
 n_pts = 400
 increment = 20

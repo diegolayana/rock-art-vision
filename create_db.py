@@ -1,4 +1,3 @@
-from posixpath import dirname
 from imagen import *
 import os
 from os import listdir

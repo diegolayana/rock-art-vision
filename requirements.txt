@@ -3,3 +3,4 @@ numpy==1.22.2
 opencv_python==4.5.5.62
 scipy==1.8.0
 manim==0.15.0
+scikit-image==0.19.3
