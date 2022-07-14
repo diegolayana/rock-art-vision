@@ -1,3 +1,4 @@
+from turtle import update
 import numpy as np
 import os
 from os import listdir
@@ -10,20 +11,31 @@ n_pts = 400
 increment = 20
 class CSS_matching():
 
-    def __init__(self, model, db_path):
-        self.path = db_path
+    def __init__(self, model, model_name, css_path, db_path):
+        self.path = css_path
+        self.model_name = model_name[0:7]
+        self.db_path = db_path
         self.model = model
+        self.load_css()
         self.load_db()
         self.model_list = self.maxima_pts(self.model, n_pts)
         self.cost = 0
 
     def load_db(self):
+        img_dict = {}
+        img_list = [f for f in listdir(self.db_path) if isfile(join(self.db_path,f))]
+        for id in img_list:
+            img_dict[id] = self.img = cv.imread(join(self.db_path,id), 0)
+
+        self.img_db = img_dict
+
+    def load_css(self):
         css_dict = {}
         css_list = [f for f in listdir(self.path) if isfile(join(self.path,f))]
         for id in css_list:
             css_dict[id[0:7]] = np.load(join(self.path,id))
 
-        self.db = css_dict
+        self.css_db = css_dict
 
     def maxima_pts(self, css_map, n_pts):
         line = np.ones((n_pts,), dtype='int8')
@@ -75,37 +87,49 @@ class CSS_matching():
 
     def get_cost(self, filename):
         cost = list()
-
         self.select_img(filename)
-        self.cost = 0
+
         #Case 1
+        self.cost = 0
         model_max = self.get_max_point(self.model_list)
         image_max = self.get_max_point(self.image_list)
         self.calculate_cost(model_max, image_max)
         cost.append(self.cost)
-        self.cost = 0
-
+        
         #Case 2
+        self.cost = 0
         model_max = self.get_second_max_point(self.model_list)
         image_max = self.get_second_max_point(self.image_list)
         self.calculate_cost(model_max, image_max)
         cost.append(self.cost)
 
+        #Case 3
+        self.cost = 0
+        model_max = self.get_max_point(self.model_list)
+        image_max = self.get_second_max_point(self.image_list)
+        self.calculate_cost(model_max, image_max)
+        cost.append(self.cost)
+
+        #Case 4
+        self.cost = 0
+        model_max = self.get_second_max_point(self.model_list)
+        image_max = self.get_max_point(self.image_list)
+        self.calculate_cost(model_max, image_max)
+        cost.append(self.cost)
 
         self.cost = min(cost)
+        # print(self.filename, cost)
         
-
     def calculate_cost(self, model_max, image_max):
 
         #Componsate the 
         self.compensate(image_max, model_max)
-
         #Create de model set
         self.model_set = set()
         self.image_set = set()
+        model_max = self.current_maxima
         self.model_set.add(model_max)
         self.image_set.add(image_max)
-        self.current_maxima = model_max  
         for i in range(max(len(self.model_list),len(self.image_list))):
             if not (self.get_empty_model() or self.get_empty_image()):
                 self.get_model_nearest()
@@ -115,6 +139,9 @@ class CSS_matching():
             self.get_residual_image_cost()
         if len(self.model_list - self.model_set) != 0:
             self.get_residual_model_cost()
+
+        # if self.filename == 'A05.tif':
+        #     self.plot_maxima()
 
     def get_empty_model(self):
         cond = self.model_list - self.model_set
@@ -190,8 +217,16 @@ class CSS_matching():
 
     def compensate(self, image_max, model_max):
         alpha = image_max[0] - model_max[0]
-        self.model = np.roll(self.model, alpha)
+        self.model = np.roll(self.model, alpha, 1)
         self.model_list = set(self.maxima_pts(self.model, n_pts))
+        self.update_current_maxima(model_max)
+
+    def update_current_maxima(self, model_max):
+        x, y = zip(*list(self.model_list))
+        y_dict = dict()
+        for i in range(len(x)):
+            y_dict[y[i]] = x[i]
+        self.current_maxima = (y_dict[model_max[1]], model_max[1])
 
     def get_model_nearest(self):
         my_list = list(self.model_list - self.model_set)
@@ -215,6 +250,25 @@ class CSS_matching():
         self.current_maxima = point
         return (x_nearest,y_nearest)
 
+    def plot_maxima(self):
+            x1, y1 = zip(*list(self.model_list))
+            x2, y2 = zip(*list(self.image_list))
+            print(self.filename)
+            print(self.get_max_point(self.model_list))
+            print(self.get_max_point(self.image_list))
+            print(self.cost)
+            fig, ax = plt.subplots(2,3)
+            ax[0][0].imshow(self.img_db[self.model_name], 'gray')
+            ax[0][1].imshow(self.img_db[self.filename], 'gray')
+            ax[1][0].imshow(self.model, 'gray')
+            ax[1][1].imshow(self.img, 'gray')
+            ax[1][2].set_ylim([0,400])
+            ax[1][2].set_xlim([0,400])
+            ax[1][2].plot(x1,y1, '.')
+            ax[1][2].plot(x2,y2, '.')
+
+            plt.show()
+
 def images_list(path):
     list = [f for f in listdir(path) if isfile(join(path,f))]
     return list
@@ -235,7 +289,7 @@ def plot_matching(model_name):
 
     cost_dict = {}
     cost_list = []
-    matching = CSS_matching(model, db_path)
+    matching = CSS_matching(model, model_name,  db_path, images_path)
     for img in img_list:
         matching.get_cost(img)
         cost_list.append(matching.cost)
@@ -243,7 +297,6 @@ def plot_matching(model_name):
 
     cost_list = np.array(cost_list)
     cost_list.sort()
-
     f, axarr = plt.subplots(4,4)
 
     axarr[0][0].imshow(cv.imread(join(images_path, cost_dict[cost_list[0]])))
@@ -271,7 +324,7 @@ def main():
     if len(sys.argv) >=2:
         model_name = sys.argv[1]
     else:
-        model_name = 'A06.tif'
+        model_name = 'A01.tif'
 
     plot_matching(model_name)
 if __name__ == '__main__':
