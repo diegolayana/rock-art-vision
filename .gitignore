@@ -136,7 +136,9 @@ images/images_test/
 images/css-maping/
 media/
 images/images_tesis/
-
+images/css-maping-old/
+images/db_test/
+images/css_map_test/
 #Files
 
 animation.py
