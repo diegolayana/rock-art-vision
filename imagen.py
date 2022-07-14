@@ -7,21 +7,26 @@ from skimage import measure
 from scipy.interpolate import splprep, splev
 from utils import *
 import os
+from PIL import Image
 
 class Imagen:
 
-    def __init__(self, path, scale):
+    def __init__(self, path, max_size):
         self.path = path
-        self.scale = scale
         self.angle = None
+        self.max_size = max_size
         self.load()
-
+        
     def load(self):
         self.img = cv.imread(self.path, 0)
         self.resize()
 
     def resize(self):
-        self.img = cv.resize(self.img, (0,0), fx=self.scale, fy=self.scale)
+        scale = self.max_size/self.img.shape[1]
+        width = int(self.img.shape[1] * scale)
+        height = int(self.img.shape[0] * scale)
+        dim = (width,height)
+        self.img = cv.resize(self.img, dim, interpolation =cv.INTER_AREA)
 
     def get_center(self):
         return int(self.img.shape[0]/2), int(self.img.shape[1]/2)
@@ -125,7 +130,6 @@ class Imagen:
 
         self.angle = theta
         self.img = secondmoment
-        # self.flip()
 
     def flip(self):
         if self.angle is None:
