@@ -95,7 +95,7 @@ class CSS_matching():
         image_max = self.get_max_point(self.image_list)
         self.calculate_cost(model_max, image_max)
         cost.append(self.cost)
-        
+
         #Case 2
         self.cost = 0
         model_max = self.get_second_max_point(self.model_list)
@@ -119,10 +119,10 @@ class CSS_matching():
 
         self.cost = min(cost)
         # print(self.filename, cost)
-        
+
     def calculate_cost(self, model_max, image_max):
 
-        #Componsate the 
+        #Componsate the
         self.compensate(image_max, model_max)
         #Create de model set
         self.model_set = set()
@@ -134,13 +134,13 @@ class CSS_matching():
             if not (self.get_empty_model() or self.get_empty_image()):
                 self.get_model_nearest()
                 self.compute_cost()
-        
+
         if len(self.image_list - self.image_set) != 0:
             self.get_residual_image_cost()
         if len(self.model_list - self.model_set) != 0:
             self.get_residual_model_cost()
 
-        # if self.filename == 'A05.tif':
+        # if self.filename == 'C16.tif':
         #     self.plot_maxima()
 
     def get_empty_model(self):
@@ -157,7 +157,7 @@ class CSS_matching():
         y = np.array(y)
         cost = np.sum(y)
         self.cost = self.cost + cost
-        
+
     def get_residual_model_cost(self):
         my_list =  list(self.model_list - self.model_set)
         x, y = zip(*my_list)
@@ -324,7 +324,7 @@ def main():
     if len(sys.argv) >=2:
         model_name = sys.argv[1]
     else:
-        model_name = 'A01.tif'
+        model_name = 'C10.tif'
 
     plot_matching(model_name)
 if __name__ == '__main__':

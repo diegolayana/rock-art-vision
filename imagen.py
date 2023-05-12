@@ -183,6 +183,45 @@ class Imagen:
         
         self.css_map = css_map
 
+    def maxima_pts(self, n_pts):
+        line = np.ones((n_pts,), dtype='int8')
+        n_inter = []
+        index_dict = {}
+        y_points = []
+        pts = []
+        for i in range(n_pts):
+            a = np.dot(self.css_map[i][0:],line)
+            n_inter.append(a)
+
+        change_index = []
+        for i in range(len(n_inter)-1):
+            dif = n_inter[i+1] - n_inter[i]
+            if dif > 0:
+                change_index.append(i+1)
+
+        for index in change_index:
+            p_list = np.where(self.css_map[index][0:]==1)
+            index_dict[index] = p_list[0]
+
+        for index in change_index:
+            if len(index_dict[index]) <=2:
+                y = int(index_dict[index].sum()/2)
+                y_points.append(y)
+                pts.append((y,n_pts-index))
+            else:
+                diff_list = np.diff(index_dict[index])
+                first_diff = index_dict[index][0] - (index_dict[index][-1] - n_pts)
+                diff_list = np.append(first_diff, diff_list)
+                if np.argmin(diff_list) == 0:
+                    pass
+                    #Caso particular del borde
+                else:
+                    y = int((index_dict[index][np.argmin(diff_list-1)]+index_dict[index][np.argmin(diff_list)])/2)
+                    y_points.append(y)
+                    pts.append((y,n_pts-index))
+
+        return pts
+        
 def main():
     pass 
 
